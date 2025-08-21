@@ -1,0 +1,40 @@
+name: Update TW forecast (CWA)
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # 每 5 分鐘
+  workflow_dispatch: {}      # 手動觸發
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: |
+          mkdir -p scripts
+          echo '{}' > package.json
+          npm i node-fetch@3
+
+      - name: Build tw-forecast.min.json
+        env:
+          CWA_KEY: ${{ secrets.CWA_KEY }}
+        run: |
+          node scripts/fetch_cwa.js
+
+      - name: Commit & Push (if changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "chore: update tw-forecast.min.json"
+            git push
+          fi
